@@ -18,7 +18,6 @@ const listCustomers = asyncHandler(async (req, res) => {
 
   res.json({ success: true, data: rows, page, limit, total });
 });
-
 // POST /api/customers
 const createCustomer = asyncHandler(async (req, res) => {
   const customer = await customerModel.create(req.body, req.user.id);

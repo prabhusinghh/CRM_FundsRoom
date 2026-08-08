@@ -91,11 +91,44 @@ curl http://localhost:5000/api/auth/me \
   validation (400), not-found (404), search, status/type filters, and the
   follow-up → `follow_up_date` sync all verified working.
 
-## Next (Phase 3)
+## What's in Phase 3 — Product / Inventory module
 
-Product/Inventory module: `models/productModel.js`,
-`controllers/productController.js`, `routes/productRoutes.js`,
-`validators/productValidator.js`, plus the stock movement log
-(`GET /:id/stock-log`, `POST /:id/stock-movement`) — same pattern as
-Customers above, with the added `current_stock >= 0` guard already enforced
-at the DB level by `schema.sql`.
+| Method | Endpoint | Roles | Notes |
+|---|---|---|---|
+| GET | `/api/products` | All | `?search=&category=&lowStock=true&page=&limit=` |
+| POST | `/api/products` | Admin, Warehouse | rejects duplicate SKU with `409` |
+| GET | `/api/products/:id` | All | |
+| PUT | `/api/products/:id` | Admin, Warehouse | `current_stock` rejected with `400` — see below |
+| GET | `/api/products/:id/stock-log` | All | paginated movement history |
+| POST | `/api/products/:id/stock-movement` | Admin, Warehouse | manual IN/OUT, transaction-safe |
+
+**The key design decision:** `current_stock` can never be set directly through
+`PUT /api/products/:id` — the validator rejects it outright. The *only* way
+stock changes is through `POST /:id/stock-movement`, which:
+
+1. Locks the product row (`SELECT ... FOR UPDATE`) inside a transaction.
+2. Computes the new stock and rejects with `409` if an `OUT` would go
+   negative — **before** touching the row.
+3. Updates `current_stock` and inserts the `stock_movements` row together,
+   and rolls back both if either fails.
+
+This guarantees `stock_movements` is always a complete, trustworthy audit
+trail of *why* `current_stock` is what it is — there's no code path that lets
+the two drift apart. `recordMovement()` also accepts an optional
+`reference_type`/`reference_id`/external connection, so Phase 4 (challans)
+can reuse it verbatim inside its own transaction instead of duplicating the
+locking logic.
+
+**Tested end-to-end**, including the case that matters most: an `OUT`
+request for more than available stock returns `409` and leaves both
+`current_stock` and the movement log completely untouched (rollback
+verified, not just assumed).
+
+## Next (Phase 4)
+
+Sales Challan module: multi-line-item challans, Draft/Confirmed/Cancelled
+status, auto-generated challan numbers (`challan_counters` table already in
+the schema), and the confirm endpoint that calls
+`stockMovementModel.recordMovement()` once per line item inside a single
+transaction — insufficient stock on *any* item aborts the whole challan, not
+just that line.
