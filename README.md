@@ -1,6 +1,7 @@
-# ERP + CRM Backend — Phase 1 (Foundations)
+# ERP + CRM Backend — Complete (Phases 1-4)
 
-Auth + role middleware + DB schema. Customer/Product/Challan modules come in later phases.
+All four backend modules built and tested end-to-end against live MySQL:
+Auth, Customer/CRM, Product/Inventory, and Sales Challans.
 
 ## Setup
 
@@ -124,11 +125,68 @@ request for more than available stock returns `409` and leaves both
 `current_stock` and the movement log completely untouched (rollback
 verified, not just assumed).
 
-## Next (Phase 4)
+## What's in Phase 4 — Sales Challan module
 
-Sales Challan module: multi-line-item challans, Draft/Confirmed/Cancelled
-status, auto-generated challan numbers (`challan_counters` table already in
-the schema), and the confirm endpoint that calls
-`stockMovementModel.recordMovement()` once per line item inside a single
-transaction — insufficient stock on *any* item aborts the whole challan, not
-just that line.
+| Method | Endpoint | Roles | Notes |
+|---|---|---|---|
+| GET | `/api/challans` | All | `?status=&customerId=&page=&limit=` |
+| POST | `/api/challans` | Admin, Sales | `status: 'Draft'` (default) or `'Confirmed'` |
+| GET | `/api/challans/:id` | All | includes `items[]` with snapshot data |
+| PUT | `/api/challans/:id` | Admin, Sales | Draft-only, `409` otherwise |
+| POST | `/api/challans/:id/confirm` | Admin, Sales, Warehouse | Draft → Confirmed, deducts stock |
+| POST | `/api/challans/:id/cancel` | Admin, Sales | reverses stock if it was Confirmed |
+
+This is the highest-risk module in the system — multiple products, real
+money-adjacent stock effects, and several ways for a naive implementation to
+leave data half-updated. Design decisions and what was actually verified:
+
+**Auto-numbering (`CH-2026-00001`)** — `challan_counters` is incremented with
+`INSERT ... ON DUPLICATE KEY UPDATE` on the *same connection* as the challan
+insert, so the row lock serializes concurrent requests. Crucially, this
+happens **inside the transaction**: if the challan creation later fails and
+rolls back, the counter increment rolls back too, so numbers are never
+skipped by a failed attempt. (Note: the challan's own auto-increment `id`
+*can* show small gaps after a rollback — that's normal, harmless InnoDB
+behavior for internal primary keys. The human-facing `challan_number` is the
+one guaranteed gapless, because it's built by hand for exactly this reason.)
+
+**Product snapshots** — `challan_items` stores `product_name_snapshot`,
+`product_sku_snapshot`, and `unit_price_snapshot` at creation time. Verified:
+changed a product's live price after confirming a challan against it, and
+the challan's item still showed the original price.
+
+**All-or-nothing multi-item confirm** — confirming loops over every line item
+and calls the same `stockMovementModel.recordMovement()` from Phase 3, on
+the transaction's connection. Verified with a 2-item challan where the first
+item alone would have succeeded but the second didn't have enough stock: the
+whole confirm returned `409` and **neither** item's stock moved — not just
+the one that failed.
+
+**Create-directly-as-Confirmed** — `POST /api/challans` with
+`"status": "Confirmed"` snapshots the items, deducts stock, and creates the
+challan in one transaction. Verified the failure path too: an insufficient-
+stock item makes the entire request fail with `409` and **no challan row is
+created at all** (not a Draft leftover, not a partial one).
+
+**Cancel reverses Confirmed stock** — cancelling a Draft is a no-op on
+stock (nothing was ever deducted). Cancelling a Confirmed challan inserts
+compensating `IN` movements for every item. Verified the stock returned to
+exactly its pre-confirm value.
+
+**Edit is Draft-only** — `PUT` replaces the item list and recalculates
+`total_quantity`; attempting it on a Confirmed or Cancelled challan returns
+`409`.
+
+All of the above were exercised against a real running server + MySQL
+instance in this build, not just written and assumed correct.
+
+## All four backend modules are complete. From here:
+
+- **Frontend (React)** — Login → Dashboard → Customers → Products → Challan
+  builder, wired to these APIs. This is naturally the next thing to build.
+- **Purchase orders / inbound stock** as its own module, if scope allows —
+  the `stock_movements` ledger with `reference_type` is already set up to
+  support it (`reference_type: 'PURCHASE_ORDER'`).
+- **Basic invoicing** for the Accounts role.
+- **Deployment** — Docker Compose (app + MySQL) is the simplest path for a
+  case-study submission; Railway/Render + PlanetScale if you want a live URL.

@@ -22,11 +22,13 @@ const login = asyncHandler(async (req, res) => {
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '8h',
   });
+
   res.json({
     success: true,
     data: { token, user: payload },
   });
 });
+
 // GET /api/auth/me
 const me = asyncHandler(async (req, res) => {
   const user = await userModel.findById(req.user.id);
