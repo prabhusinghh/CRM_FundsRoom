@@ -74,9 +74,28 @@ curl http://localhost:5000/api/auth/me \
   - `utils/asyncHandler.js` — wrap async controller functions, no manual
     try/catch needed.
 
-## Next (Phase 2)
+## What's in Phase 2 — Customer / CRM module
 
-Customer module: `models/customerModel.js`, `controllers/customerController.js`,
-`routes/customerRoutes.js`, `validators/customerValidator.js` — CRUD, search,
-pagination, and the follow-up notes endpoint, following the same
-model/controller/route/validator pattern as auth above.
+| Method | Endpoint | Roles | Notes |
+|---|---|---|---|
+| GET | `/api/customers` | All | `?search=&status=&type=&page=&limit=` |
+| POST | `/api/customers` | Admin, Sales | |
+| GET | `/api/customers/:id` | All | includes `followups[]` |
+| PUT | `/api/customers/:id` | Admin, Sales | partial update, only sent fields change |
+| POST | `/api/customers/:id/followups` | Admin, Sales | also syncs `customers.follow_up_date` |
+
+- `search` does a partial match across name, mobile, business name, and email.
+- List responses are shaped `{ success, data, page, limit, total }`.
+- GSTIN, when provided, is checked against the standard 15-character format.
+- Tested end-to-end against a live MySQL instance: role checks (403),
+  validation (400), not-found (404), search, status/type filters, and the
+  follow-up → `follow_up_date` sync all verified working.
+
+## Next (Phase 3)
+
+Product/Inventory module: `models/productModel.js`,
+`controllers/productController.js`, `routes/productRoutes.js`,
+`validators/productValidator.js`, plus the stock movement log
+(`GET /:id/stock-log`, `POST /:id/stock-movement`) — same pattern as
+Customers above, with the added `current_stock >= 0` guard already enforced
+at the DB level by `schema.sql`.

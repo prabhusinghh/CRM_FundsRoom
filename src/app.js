@@ -16,9 +16,9 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/customers', require('./routes/customerRoutes'));
 
-// Phase 2-4: mount as each module is built
-// app.use('/api/customers', require('./routes/customerRoutes'));
+// Phase 3-4: mount as each module is built
 // app.use('/api/products', require('./routes/productRoutes'));
 // app.use('/api/challans', require('./routes/challanRoutes'));
 
