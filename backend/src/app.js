@@ -11,6 +11,14 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'CRM FundsRoom API is running',
+    health: '/api/health',
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'API is running' });
 });

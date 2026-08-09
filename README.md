@@ -10,6 +10,15 @@ FundsRoom / erp-crm-portal/
 
 ---
 
+## 🌐 Live Deployment
+
+| Service | URL |
+|---|---|
+| **Live Backend API** | [https://crm-fundsroom-backend.onrender.com](https://crm-fundsroom-backend.onrender.com) |
+| **Health Check** | [https://crm-fundsroom-backend.onrender.com/api/health](https://crm-fundsroom-backend.onrender.com/api/health) |
+
+---
+
 ## 🚀 Quick Setup & How to Run
 
 Follow these step-by-step instructions to get the application running on your local machine.
