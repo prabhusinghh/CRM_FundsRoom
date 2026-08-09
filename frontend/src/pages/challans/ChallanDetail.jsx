@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Pencil, CheckCircle2, XCircle, User } from 'lucide-react';
+import { ArrowLeft, Pencil, CheckCircle2, XCircle, User, Download } from 'lucide-react';
 import { getChallan, confirmChallan, cancelChallan } from '../../api/challanApi';
 import Badge from '../../components/common/Badge';
 import ChallanTag from '../../components/common/ChallanTag';
@@ -8,6 +8,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { PageSpinner } from '../../components/common/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { generateChallanPDF } from '../../utils/pdfGenerator';
 
 export default function ChallanDetail() {
   const { id } = useParams();
@@ -87,6 +88,9 @@ export default function ChallanDetail() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button className="btn-secondary" onClick={() => generateChallanPDF(challan)}>
+              <Download size={14} /> Export PDF
+            </button>
             {canEdit && (
               <Link to={`/challans/${id}/edit`} className="btn-secondary">
                 <Pencil size={14} /> Edit

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Users, ChevronRight } from 'lucide-react';
+import { Plus, Users, ChevronRight, Download } from 'lucide-react';
 import { listCustomers } from '../../api/customerApi';
 import PageHeader from '../../components/common/PageHeader';
 import SearchInput from '../../components/common/SearchInput';
@@ -9,6 +9,7 @@ import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
 import { PageSpinner } from '../../components/common/Spinner';
 import { useAuth } from '../../context/AuthContext';
+import { generateCustomerReportPDF } from '../../utils/pdfGenerator';
 
 const STATUS_OPTIONS = ['', 'Lead', 'Active', 'Inactive'];
 const TYPE_OPTIONS = ['', 'Retail', 'Wholesale', 'Distributor'];
@@ -55,11 +56,18 @@ export default function CustomerList() {
         title="Customers"
         description="Your CRM — leads, accounts, and follow-ups."
         action={
-          hasRole('Admin', 'Sales') && (
-            <Link to="/customers/new" className="btn-primary">
-              <Plus size={16} /> Add customer
-            </Link>
-          )
+          <div className="flex gap-2">
+            {rows.length > 0 && (
+              <button className="btn-secondary" onClick={() => generateCustomerReportPDF(rows)}>
+                <Download size={16} /> Export PDF
+              </button>
+            )}
+            {hasRole('Admin', 'Sales') && (
+              <Link to="/customers/new" className="btn-primary">
+                <Plus size={16} /> Add customer
+              </Link>
+            )}
+          </div>
         }
       />
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Package, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, Package, ChevronRight, AlertTriangle, Download } from 'lucide-react';
 import { listProducts } from '../../api/productApi';
 import PageHeader from '../../components/common/PageHeader';
 import SearchInput from '../../components/common/SearchInput';
@@ -8,6 +8,7 @@ import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
 import { PageSpinner } from '../../components/common/Spinner';
 import { useAuth } from '../../context/AuthContext';
+import { generateProductStockPDF } from '../../utils/pdfGenerator';
 
 export default function ProductList() {
   const { hasRole } = useAuth();
@@ -50,11 +51,18 @@ export default function ProductList() {
         title="Products"
         description="Inventory across all warehouse locations."
         action={
-          hasRole('Admin', 'Warehouse') && (
-            <Link to="/products/new" className="btn-primary">
-              <Plus size={16} /> Add product
-            </Link>
-          )
+          <div className="flex gap-2">
+            {rows.length > 0 && (
+              <button className="btn-secondary" onClick={() => generateProductStockPDF(rows)}>
+                <Download size={16} /> Export PDF
+              </button>
+            )}
+            {hasRole('Admin', 'Warehouse') && (
+              <Link to="/products/new" className="btn-primary">
+                <Plus size={16} /> Add product
+              </Link>
+            )}
+          </div>
         }
       />
 
